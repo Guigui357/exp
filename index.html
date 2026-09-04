@@ -1,113 +1,200 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width,
-               initial-scale=1,
-               maximum-scale=1,
-               user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
 <title>Paper RAM Reader</title>
 
 <style>
-    * {
-        box-sizing: border-box;
-    }
+* {
+    box-sizing: border-box;
+}
 
-    body {
-        margin: 0;
-        background: #111;
-        color: white;
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        text-align: center;
-    }
+body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    text-align: center;
+}
 
-    h1 {
-        font-size: 24px;
-        margin: 18px 0 5px;
-    }
+h1 {
+    font-size: 24px;
+    margin: 18px 0 5px;
+}
 
-    #status {
-        color: #aaa;
-        margin-bottom: 12px;
-    }
+#status {
+    color: #aaa;
+    margin: 5px 15px 12px;
+}
 
-    #cameraBox {
-        position: relative;
-        width: 95vw;
-        max-width: 600px;
-        margin: auto;
-        overflow: hidden;
-        border-radius: 12px;
-        background: black;
-    }
+#cameraBox {
+    position: relative;
+    width: 96vw;
+    max-width: 700px;
+    margin: auto;
+    overflow: hidden;
+    border-radius: 14px;
+    background: black;
+}
 
-    video {
-        width: 100%;
-        display: block;
-    }
+video {
+    width: 100%;
+    display: block;
+}
 
-    /*
-       Área onde o byte deve aparecer.
-       8 células = 8 bits
-    */
-    #scanArea {
-        position: absolute;
-        left: 5%;
-        right: 5%;
-        top: 40%;
-        height: 20%;
+/*
+   Caixa vermelha:
+   coloque 8 linhas do caderno
+   dentro desta região.
+*/
+#scanArea {
+    position: absolute;
 
-        border: 3px solid red;
-        pointer-events: none;
-    }
+    left: 5%;
+    right: 5%;
+    top: 25%;
+    height: 50%;
 
-    #bits {
-        font-family: monospace;
-        font-size: 32px;
-        letter-spacing: 5px;
-        margin: 20px 0 5px;
-    }
+    border: 3px solid red;
+    pointer-events: none;
+}
 
-    #hex {
-        font-family: monospace;
-        font-size: 25px;
-    }
+/*
+   Linhas virtuais mostrando
+   onde os 8 bits serão analisados.
+*/
+.scanLine {
+    position: absolute;
 
-    #decimal {
-        margin-top: 5px;
-        color: #aaa;
-    }
+    left: 5%;
+    width: 90%;
 
-    button {
-        border: 0;
-        border-radius: 10px;
-        padding: 14px 20px;
-        margin: 8px;
-        font-size: 17px;
-        font-weight: bold;
-    }
+    height: 1px;
 
-    #start {
-        background: white;
-        color: black;
-    }
+    background: rgba(255, 0, 0, 0.7);
 
-    #stop {
-        background: #444;
-        color: white;
-    }
+    pointer-events: none;
+}
 
-    #calibrate {
-        background: #333;
-        color: white;
-    }
+#line0 { top: 25%; }
+#line1 { top: 32%; }
+#line2 { top: 39%; }
+#line3 { top: 46%; }
+#line4 { top: 53%; }
+#line5 { top: 60%; }
+#line6 { top: 67%; }
+#line7 { top: 74%; }
 
-    canvas {
-        display: none;
-    }
+button {
+    border: 0;
+    border-radius: 10px;
+
+    padding: 13px 17px;
+    margin: 6px;
+
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#start {
+    background: white;
+    color: black;
+}
+
+#stop {
+    background: #444;
+    color: white;
+}
+
+#calibrate {
+    background: #333;
+    color: white;
+}
+
+#bits {
+    font-family: monospace;
+    font-size: 34px;
+
+    letter-spacing: 4px;
+
+    margin-top: 18px;
+}
+
+#hex {
+    font-family: monospace;
+    font-size: 26px;
+
+    margin-top: 8px;
+}
+
+#decimal {
+    color: #aaa;
+    margin-top: 5px;
+}
+
+#ascii {
+    font-family: monospace;
+    font-size: 24px;
+
+    margin-top: 8px;
+}
+
+#levels {
+    width: 94%;
+    max-width: 600px;
+
+    margin: 20px auto;
+}
+
+.level {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    margin: 5px 0;
+}
+
+.levelLabel {
+    width: 25px;
+    font-family: monospace;
+}
+
+.bar {
+    flex: 1;
+
+    height: 15px;
+
+    background: #333;
+
+    border-radius: 5px;
+
+    overflow: hidden;
+}
+
+.barFill {
+    height: 100%;
+
+    width: 0%;
+
+    background: white;
+}
+
+.bitValue {
+    width: 20px;
+
+    font-family: monospace;
+    font-weight: bold;
+}
+
+canvas {
+    display: none;
+}
 </style>
+
 </head>
 
 <body>
@@ -115,33 +202,48 @@
 <h1>📄 Paper RAM Reader</h1>
 
 <div id="status">
-    Pressione "Iniciar câmera"
+    Inicie a câmera e coloque 8 linhas do caderno dentro da caixa.
 </div>
 
 <div id="cameraBox">
 
-    <video id="video"
-           autoplay
-           playsinline
-           muted>
-    </video>
+```
+<video id="video"
+       autoplay
+       playsinline
+       muted>
+</video>
 
-    <div id="scanArea"></div>
+<div id="scanArea"></div>
+
+<div id="line0" class="scanLine"></div>
+<div id="line1" class="scanLine"></div>
+<div id="line2" class="scanLine"></div>
+<div id="line3" class="scanLine"></div>
+<div id="line4" class="scanLine"></div>
+<div id="line5" class="scanLine"></div>
+<div id="line6" class="scanLine"></div>
+<div id="line7" class="scanLine"></div>
+```
 
 </div>
 
 <div>
-    <button id="start">
-        📷 Iniciar câmera
-    </button>
 
-    <button id="stop">
-        ⛔ Parar
-    </button>
+```
+<button id="start">
+    📷 Iniciar câmera
+</button>
 
-    <button id="calibrate">
-        ⚙️ Calibrar
-    </button>
+<button id="stop">
+    ⛔ Parar
+</button>
+
+<button id="calibrate">
+    ⚙️ Calibrar papel
+</button>
+```
+
 </div>
 
 <div id="bits">
@@ -156,6 +258,64 @@
     Decimal: 0
 </div>
 
+<div id="ascii">
+    ASCII: .
+</div>
+
+<div id="levels">
+
+```
+<div class="level">
+    <div class="levelLabel">7</div>
+    <div class="bar"><div id="bar0" class="barFill"></div></div>
+    <div id="value0" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">6</div>
+    <div class="bar"><div id="bar1" class="barFill"></div></div>
+    <div id="value1" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">5</div>
+    <div class="bar"><div id="bar2" class="barFill"></div></div>
+    <div id="value2" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">4</div>
+    <div class="bar"><div id="bar3" class="barFill"></div></div>
+    <div id="value3" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">3</div>
+    <div class="bar"><div id="bar4" class="barFill"></div></div>
+    <div id="value4" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">2</div>
+    <div class="bar"><div id="bar5" class="barFill"></div></div>
+    <div id="value5" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">1</div>
+    <div class="bar"><div id="bar6" class="barFill"></div></div>
+    <div id="value6" class="bitValue">0</div>
+</div>
+
+<div class="level">
+    <div class="levelLabel">0</div>
+    <div class="bar"><div id="bar7" class="barFill"></div></div>
+    <div id="value7" class="bitValue">0</div>
+</div>
+```
+
+</div>
+
 <canvas id="canvas"></canvas>
 
 <script>
@@ -167,54 +327,127 @@ const ctx = canvas.getContext("2d", {
     willReadFrequently: true
 });
 
-const statusText = document.getElementById("status");
-const bitsText = document.getElementById("bits");
-const hexText = document.getElementById("hex");
-const decimalText = document.getElementById("decimal");
+const statusText =
+    document.getElementById("status");
+
+const bitsText =
+    document.getElementById("bits");
+
+const hexText =
+    document.getElementById("hex");
+
+const decimalText =
+    document.getElementById("decimal");
+
+const asciiText =
+    document.getElementById("ascii");
+
 
 let stream = null;
 let running = false;
 
-/*
-    Threshold de luminosidade.
 
-    Quanto MENOR o valor,
-    mais escuro precisa estar
-    para ser considerado "1".
+/*
+    Sensibilidade.
+
+    O papel branco normalmente terá
+    uma luminosidade alta.
+
+    Grafite terá luminosidade menor.
+
+    Quanto maior este valor,
+    mais fácil será considerar
+    uma linha como "riscada".
 */
-let threshold = 130;
+let threshold = 120;
 
 
 /*
-    Layout do byte.
-
-    O retângulo vermelho é dividido
-    em 8 partes iguais.
+    Quantidade de bits.
 */
-const CELLS = 8;
+const BIT_COUNT = 8;
 
 
 /*
-    Iniciar câmera
+    Posição vertical das 8 linhas.
+
+    Valores relativos à imagem.
+*/
+const LINE_POSITIONS = [
+    0.25,
+    0.32,
+    0.39,
+    0.46,
+    0.53,
+    0.60,
+    0.67,
+    0.74
+];
+
+
+/*
+    Área horizontal analisada.
+
+    Evitamos as laterais da folha.
+*/
+const X_START = 0.10;
+const X_END   = 0.90;
+
+
+/*
+    Espessura vertical analisada.
+
+    Não usamos apenas um pixel.
+
+    Pegamos vários pixels acima
+    e abaixo da linha.
+*/
+const SAMPLE_HEIGHT = 0.025;
+
+
+/*
+    Iniciar câmera.
 */
 async function startCamera() {
 
+    if (!window.isSecureContext) {
+
+        statusText.textContent =
+            "Erro: abra o site usando HTTPS.";
+
+        return;
+    }
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia) {
+
+        statusText.textContent =
+            "Este navegador não disponibilizou a câmera.";
+
+        return;
+    }
+
     try {
 
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: {
-                    ideal: "environment"
+        stream =
+            await navigator.mediaDevices.getUserMedia({
+
+                video: {
+                    facingMode: {
+                        ideal: "environment"
+                    },
+
+                    width: {
+                        ideal: 1280
+                    },
+
+                    height: {
+                        ideal: 720
+                    }
                 },
-                width: {
-                    ideal: 1280
-                },
-                height: {
-                    ideal: 720
-                }
-            },
-            audio: false
-        });
+
+                audio: false
+            });
 
         video.srcObject = stream;
 
@@ -223,7 +456,7 @@ async function startCamera() {
         running = true;
 
         statusText.textContent =
-            "Câmera ativa — enquadre o byte";
+            "Câmera ativa — alinhe as 8 linhas vermelhas com o caderno.";
 
         requestAnimationFrame(readFrame);
 
@@ -232,13 +465,16 @@ async function startCamera() {
         console.error(error);
 
         statusText.textContent =
-            "Erro ao acessar a câmera: " + error.message;
+            "Erro da câmera: " +
+            error.name +
+            " — " +
+            error.message;
     }
 }
 
 
 /*
-    Parar câmera
+    Parar câmera.
 */
 function stopCamera() {
 
@@ -246,9 +482,9 @@ function stopCamera() {
 
     if (stream) {
 
-        for (const track of stream.getTracks()) {
-            track.stop();
-        }
+        stream.getTracks().forEach(
+            track => track.stop()
+        );
 
         stream = null;
     }
@@ -256,56 +492,81 @@ function stopCamera() {
     video.srcObject = null;
 
     statusText.textContent =
-        "Câmera parada";
+        "Câmera parada.";
 }
 
 
 /*
-    Calcula luminosidade média
-    de uma região.
+    Calcula a luminosidade média
+    de uma faixa horizontal.
 */
-function averageBrightness(
+function getLineBrightness(
     imageData,
-    x,
-    y,
-    width,
-    height
+    yCenter
 ) {
 
-    const data = imageData.data;
+    const width =
+        imageData.width;
+
+    const height =
+        imageData.height;
+
+    const data =
+        imageData.data;
+
+    const x1 =
+        Math.floor(width * X_START);
+
+    const x2 =
+        Math.floor(width * X_END);
+
+    const halfHeight =
+        Math.max(
+            1,
+            Math.floor(
+                height * SAMPLE_HEIGHT / 2
+            )
+        );
+
+    const y1 =
+        Math.max(
+            0,
+            Math.floor(yCenter - halfHeight)
+        );
+
+    const y2 =
+        Math.min(
+            height,
+            Math.floor(yCenter + halfHeight)
+        );
 
     let total = 0;
     let count = 0;
 
     /*
-       Ignoramos uma borda da célula.
-       Isso reduz interferência das linhas
-       do caderno.
+        Amostragem a cada 2 pixels.
+        Isso deixa o processamento leve
+        no iPhone.
     */
+    for (
+        let y = y1;
+        y < y2;
+        y += 2
+    ) {
 
-    const marginX = Math.floor(width * 0.20);
-    const marginY = Math.floor(height * 0.20);
-
-    const startX = x + marginX;
-    const endX = x + width - marginX;
-
-    const startY = y + marginY;
-    const endY = y + height - marginY;
-
-    for (let py = startY; py < endY; py++) {
-
-        for (let px = startX; px < endX; px++) {
+        for (
+            let x = x1;
+            x < x2;
+            x += 2
+        ) {
 
             const index =
-                (py * imageData.width + px) * 4;
+                (y * width + x) * 4;
 
             const r = data[index];
             const g = data[index + 1];
             const b = data[index + 2];
 
-            /*
-                Luminância aproximada.
-            */
             const brightness =
                 0.299 * r +
                 0.587 * g +
@@ -316,14 +577,14 @@ function averageBrightness(
         }
     }
 
-    return count > 0
+    return count
         ? total / count
         : 255;
 }
 
 
 /*
-    Ler um frame da câmera.
+    Lê o frame atual.
 */
 function readFrame() {
 
@@ -337,8 +598,11 @@ function readFrame() {
         return;
     }
 
-    const width = video.videoWidth;
-    const height = video.videoHeight;
+    const width =
+        video.videoWidth;
+
+    const height =
+        video.videoHeight;
 
     if (!width || !height) {
 
@@ -349,9 +613,6 @@ function readFrame() {
     canvas.width = width;
     canvas.height = height;
 
-    /*
-        Copia o frame da câmera.
-    */
     ctx.drawImage(
         video,
         0,
@@ -360,66 +621,90 @@ function readFrame() {
         height
     );
 
-    /*
-        Área de leitura.
-    */
-    const areaX = Math.floor(width * 0.05);
-    const areaY = Math.floor(height * 0.40);
-
-    const areaWidth =
-        Math.floor(width * 0.90);
-
-    const areaHeight =
-        Math.floor(height * 0.20);
-
     const imageData =
         ctx.getImageData(
-            areaX,
-            areaY,
-            areaWidth,
-            areaHeight
+            0,
+            0,
+            width,
+            height
         );
 
-    /*
-        Cada célula representa um bit.
-    */
+
     let bits = "";
 
-    for (let i = 0; i < CELLS; i++) {
+    /*
+        Lê as 8 linhas.
+    */
+    for (
+        let i = 0;
+        i < BIT_COUNT;
+        i++
+    ) {
 
-        const cellX =
+        const y =
             Math.floor(
-                i * areaWidth / CELLS
+                height * LINE_POSITIONS[i]
             );
-
-        const nextX =
-            Math.floor(
-                (i + 1) * areaWidth / CELLS
-            );
-
-        const cellWidth =
-            nextX - cellX;
 
         const brightness =
-            averageBrightness(
+            getLineBrightness(
                 imageData,
-                cellX,
-                0,
-                cellWidth,
-                areaHeight
+                y
             );
 
+
         /*
-            Escuro = 1
-            Claro = 0
+            Converte luminosidade
+            em intensidade de grafite.
+
+            0 = papel muito claro
+            100 = muito escuro
+        */
+        let darkness =
+            100 -
+            (brightness / 255 * 100);
+
+        darkness =
+            Math.max(
+                0,
+                Math.min(
+                    100,
+                    darkness
+                )
+            );
+
+
+        /*
+            Atualiza barra visual.
+        */
+        const bar =
+            document.getElementById(
+                "bar" + i
+            );
+
+        const value =
+            document.getElementById(
+                "value" + i
+            );
+
+        bar.style.width =
+            darkness + "%";
+
+
+        /*
+            Escuro o suficiente = 1.
         */
         const bit =
             brightness < threshold
-                ? "1"
-                : "0";
+                ? 1
+                : 0;
 
         bits += bit;
+
+        value.textContent =
+            bit;
     }
+
 
     displayByte(bits);
 
@@ -428,8 +713,7 @@ function readFrame() {
 
 
 /*
-    Converter 8 bits
-    para número.
+    Mostra o byte.
 */
 function displayByte(bits) {
 
@@ -440,7 +724,8 @@ function displayByte(bits) {
     const value =
         parseInt(bits, 2);
 
-    bitsText.textContent = bits;
+    bitsText.textContent =
+        bits;
 
     hexText.textContent =
         "0x" +
@@ -451,101 +736,133 @@ function displayByte(bits) {
 
     decimalText.textContent =
         "Decimal: " + value;
+
+
+    /*
+        ASCII.
+    */
+    if (
+        value >= 32 &&
+        value <= 126
+    ) {
+
+        asciiText.textContent =
+            "ASCII: " +
+            String.fromCharCode(value);
+
+    } else {
+
+        asciiText.textContent =
+            "ASCII: .";
+    }
 }
 
 
 /*
-    Calibração simples.
+    CALIBRAÇÃO
 
-    Coloque papel LIMPO na área
-    e pressione calibrar.
+    Aponte para uma região
+    de papel SEM GRAFITE.
 
-    O programa usa a luminosidade
-    atual para definir o threshold.
+    O programa mede o papel
+    e coloca o threshold abaixo
+    dele.
 */
 document
     .getElementById("calibrate")
-    .addEventListener("click", () => {
+    .addEventListener("click", calibrate);
 
-        if (!video.videoWidth) {
 
-            statusText.textContent =
-                "Inicie a câmera primeiro.";
+function calibrate() {
 
-            return;
-        }
+    if (!video.videoWidth) {
 
-        const width = video.videoWidth;
-        const height = video.videoHeight;
+        statusText.textContent =
+            "Inicie a câmera primeiro.";
 
-        canvas.width = width;
-        canvas.height = height;
+        return;
+    }
 
-        ctx.drawImage(
-            video,
+    const width =
+        video.videoWidth;
+
+    const height =
+        video.videoHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        width,
+        height
+    );
+
+    const imageData =
+        ctx.getImageData(
             0,
             0,
             width,
             height
         );
 
-        const areaX =
-            Math.floor(width * 0.05);
 
-        const areaY =
-            Math.floor(height * 0.40);
+    /*
+        Mede as 8 regiões.
+    */
+    let values = [];
 
-        const areaWidth =
-            Math.floor(width * 0.90);
+    for (
+        let i = 0;
+        i < BIT_COUNT;
+        i++
+    ) {
 
-        const areaHeight =
-            Math.floor(height * 0.20);
-
-        const imageData =
-            ctx.getImageData(
-                areaX,
-                areaY,
-                areaWidth,
-                areaHeight
+        const y =
+            Math.floor(
+                height * LINE_POSITIONS[i]
             );
 
-        let total = 0;
-        let count = 0;
+        const brightness =
+            getLineBrightness(
+                imageData,
+                y
+            );
 
-        for (let i = 0; i < imageData.data.length; i += 4) {
+        values.push(brightness);
+    }
 
-            const r = imageData.data[i];
-            const g = imageData.data[i + 1];
-            const b = imageData.data[i + 2];
 
-            const brightness =
-                0.299 * r +
-                0.587 * g +
-                0.114 * b;
+    const average =
+        values.reduce(
+            (a, b) => a + b,
+            0
+        ) / values.length;
 
-            total += brightness;
-            count++;
-        }
 
-        const paperBrightness =
-            total / count;
+    /*
+        O papel limpo deve ficar
+        acima deste valor.
 
-        /*
-            Consideramos como "1"
-            algo significativamente mais
-            escuro que o papel.
-        */
-        threshold =
-            paperBrightness * 0.70;
+        Uma marca de grafite forte
+        deverá ficar abaixo.
+    */
+    threshold =
+        average * 0.72;
 
-        statusText.textContent =
-            "Calibrado! Threshold: " +
-            threshold.toFixed(1);
-    });
+
+    statusText.textContent =
+        "Calibrado. Papel = " +
+        average.toFixed(0) +
+        " / limite = " +
+        threshold.toFixed(0);
+}
 
 
 /*
-    Botões
+    Botões.
 */
 document
     .getElementById("start")
@@ -563,7 +880,8 @@ document
 
 
 /*
-    Limpa câmera ao sair.
+    Para a câmera quando
+    a página é fechada.
 */
 window.addEventListener(
     "pagehide",
