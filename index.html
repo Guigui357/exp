@@ -1,894 +1,171 @@
 <!DOCTYPE html>
-
-<html lang="pt-BR">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-<title>Paper RAM Reader</title>
-
-<style>
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    background: #111;
-    color: white;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    text-align: center;
-}
-
-h1 {
-    font-size: 24px;
-    margin: 18px 0 5px;
-}
-
-#status {
-    color: #aaa;
-    margin: 5px 15px 12px;
-}
-
-#cameraBox {
-    position: relative;
-    width: 96vw;
-    max-width: 700px;
-    margin: auto;
-    overflow: hidden;
-    border-radius: 14px;
-    background: black;
-}
-
-video {
-    width: 100%;
-    display: block;
-}
-
-/*
-   Caixa vermelha:
-   coloque 8 linhas do caderno
-   dentro desta região.
-*/
-#scanArea {
-    position: absolute;
-
-    left: 5%;
-    right: 5%;
-    top: 25%;
-    height: 50%;
-
-    border: 3px solid red;
-    pointer-events: none;
-}
-
-/*
-   Linhas virtuais mostrando
-   onde os 8 bits serão analisados.
-*/
-.scanLine {
-    position: absolute;
-
-    left: 5%;
-    width: 90%;
-
-    height: 1px;
-
-    background: rgba(255, 0, 0, 0.7);
-
-    pointer-events: none;
-}
-
-#line0 { top: 25%; }
-#line1 { top: 32%; }
-#line2 { top: 39%; }
-#line3 { top: 46%; }
-#line4 { top: 53%; }
-#line5 { top: 60%; }
-#line6 { top: 67%; }
-#line7 { top: 74%; }
-
-button {
-    border: 0;
-    border-radius: 10px;
-
-    padding: 13px 17px;
-    margin: 6px;
-
-    font-size: 16px;
-    font-weight: bold;
-}
-
-#start {
-    background: white;
-    color: black;
-}
-
-#stop {
-    background: #444;
-    color: white;
-}
-
-#calibrate {
-    background: #333;
-    color: white;
-}
-
-#bits {
-    font-family: monospace;
-    font-size: 34px;
-
-    letter-spacing: 4px;
-
-    margin-top: 18px;
-}
-
-#hex {
-    font-family: monospace;
-    font-size: 26px;
-
-    margin-top: 8px;
-}
-
-#decimal {
-    color: #aaa;
-    margin-top: 5px;
-}
-
-#ascii {
-    font-family: monospace;
-    font-size: 24px;
-
-    margin-top: 8px;
-}
-
-#levels {
-    width: 94%;
-    max-width: 600px;
-
-    margin: 20px auto;
-}
-
-.level {
-    display: flex;
-    align-items: center;
-
-    gap: 8px;
-
-    margin: 5px 0;
-}
-
-.levelLabel {
-    width: 25px;
-    font-family: monospace;
-}
-
-.bar {
-    flex: 1;
-
-    height: 15px;
-
-    background: #333;
-
-    border-radius: 5px;
-
-    overflow: hidden;
-}
-
-.barFill {
-    height: 100%;
-
-    width: 0%;
-
-    background: white;
-}
-
-.bitValue {
-    width: 20px;
-
-    font-family: monospace;
-    font-weight: bold;
-}
-
-canvas {
-    display: none;
-}
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS WebKit Fuzzer</title>
+    <style>
+        body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+        #status { margin-bottom: 10px; }
+        #log { height: 300px; overflow-y: scroll; border: 1px solid #0f0; padding: 10px; background: #000; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .crash { color: red; font-weight: bold; }
+    </style>
 </head>
-
 <body>
-
-<h1>📄 Paper RAM Reader</h1>
-
-<div id="status">
-    Inicie a câmera e coloque 8 linhas do caderno dentro da caixa.
-</div>
-
-<div id="cameraBox">
-
-```
-<video id="video"
-       autoplay
-       playsinline
-       muted>
-</video>
-
-<div id="scanArea"></div>
-
-<div id="line0" class="scanLine"></div>
-<div id="line1" class="scanLine"></div>
-<div id="line2" class="scanLine"></div>
-<div id="line3" class="scanLine"></div>
-<div id="line4" class="scanLine"></div>
-<div id="line5" class="scanLine"></div>
-<div id="line6" class="scanLine"></div>
-<div id="line7" class="scanLine"></div>
-```
-
-</div>
-
-<div>
-
-```
-<button id="start">
-    📷 Iniciar câmera
-</button>
-
-<button id="stop">
-    ⛔ Parar
-</button>
-
-<button id="calibrate">
-    ⚙️ Calibrar papel
-</button>
-```
-
-</div>
-
-<div id="bits">
-    --------
-</div>
-
-<div id="hex">
-    0x00
-</div>
-
-<div id="decimal">
-    Decimal: 0
-</div>
-
-<div id="ascii">
-    ASCII: .
-</div>
-
-<div id="levels">
-
-```
-<div class="level">
-    <div class="levelLabel">7</div>
-    <div class="bar"><div id="bar0" class="barFill"></div></div>
-    <div id="value0" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">6</div>
-    <div class="bar"><div id="bar1" class="barFill"></div></div>
-    <div id="value1" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">5</div>
-    <div class="bar"><div id="bar2" class="barFill"></div></div>
-    <div id="value2" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">4</div>
-    <div class="bar"><div id="bar3" class="barFill"></div></div>
-    <div id="value3" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">3</div>
-    <div class="bar"><div id="bar4" class="barFill"></div></div>
-    <div id="value4" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">2</div>
-    <div class="bar"><div id="bar5" class="barFill"></div></div>
-    <div id="value5" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">1</div>
-    <div class="bar"><div id="bar6" class="barFill"></div></div>
-    <div id="value6" class="bitValue">0</div>
-</div>
-
-<div class="level">
-    <div class="levelLabel">0</div>
-    <div class="bar"><div id="bar7" class="barFill"></div></div>
-    <div id="value7" class="bitValue">0</div>
-</div>
-```
-
-</div>
-
-<canvas id="canvas"></canvas>
-
-<script>
-
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-
-const ctx = canvas.getContext("2d", {
-    willReadFrequently: true
-});
-
-const statusText =
-    document.getElementById("status");
-
-const bitsText =
-    document.getElementById("bits");
-
-const hexText =
-    document.getElementById("hex");
-
-const decimalText =
-    document.getElementById("decimal");
-
-const asciiText =
-    document.getElementById("ascii");
-
-
-let stream = null;
-let running = false;
-
-
-/*
-    Sensibilidade.
-
-    O papel branco normalmente terá
-    uma luminosidade alta.
-
-    Grafite terá luminosidade menor.
-
-    Quanto maior este valor,
-    mais fácil será considerar
-    uma linha como "riscada".
-*/
-let threshold = 120;
-
-
-/*
-    Quantidade de bits.
-*/
-const BIT_COUNT = 8;
-
-
-/*
-    Posição vertical das 8 linhas.
-
-    Valores relativos à imagem.
-*/
-const LINE_POSITIONS = [
-    0.25,
-    0.32,
-    0.39,
-    0.46,
-    0.53,
-    0.60,
-    0.67,
-    0.74
-];
-
-
-/*
-    Área horizontal analisada.
-
-    Evitamos as laterais da folha.
-*/
-const X_START = 0.10;
-const X_END   = 0.90;
-
-
-/*
-    Espessura vertical analisada.
-
-    Não usamos apenas um pixel.
-
-    Pegamos vários pixels acima
-    e abaixo da linha.
-*/
-const SAMPLE_HEIGHT = 0.025;
-
-
-/*
-    Iniciar câmera.
-*/
-async function startCamera() {
-
-    if (!window.isSecureContext) {
-
-        statusText.textContent =
-            "Erro: abra o site usando HTTPS.";
-
-        return;
-    }
-
-    if (!navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia) {
-
-        statusText.textContent =
-            "Este navegador não disponibilizou a câmera.";
-
-        return;
-    }
-
-    try {
-
-        stream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video: {
-                    facingMode: {
-                        ideal: "environment"
-                    },
-
-                    width: {
-                        ideal: 1280
-                    },
-
-                    height: {
-                        ideal: 720
-                    }
-                },
-
-                audio: false
-            });
-
-        video.srcObject = stream;
-
-        await video.play();
-
-        running = true;
-
-        statusText.textContent =
-            "Câmera ativa — alinhe as 8 linhas vermelhas com o caderno.";
-
-        requestAnimationFrame(readFrame);
-
-    } catch (error) {
-
-        console.error(error);
-
-        statusText.textContent =
-            "Erro da câmera: " +
-            error.name +
-            " — " +
-            error.message;
-    }
-}
-
-
-/*
-    Parar câmera.
-*/
-function stopCamera() {
-
-    running = false;
-
-    if (stream) {
-
-        stream.getTracks().forEach(
-            track => track.stop()
-        );
-
-        stream = null;
-    }
-
-    video.srcObject = null;
-
-    statusText.textContent =
-        "Câmera parada.";
-}
-
-
-/*
-    Calcula a luminosidade média
-    de uma faixa horizontal.
-*/
-function getLineBrightness(
-    imageData,
-    yCenter
-) {
-
-    const width =
-        imageData.width;
-
-    const height =
-        imageData.height;
-
-    const data =
-        imageData.data;
-
-    const x1 =
-        Math.floor(width * X_START);
-
-    const x2 =
-        Math.floor(width * X_END);
-
-    const halfHeight =
-        Math.max(
-            1,
-            Math.floor(
-                height * SAMPLE_HEIGHT / 2
-            )
-        );
-
-    const y1 =
-        Math.max(
-            0,
-            Math.floor(yCenter - halfHeight)
-        );
-
-    const y2 =
-        Math.min(
-            height,
-            Math.floor(yCenter + halfHeight)
-        );
-
-    let total = 0;
-    let count = 0;
-
-    /*
-        Amostragem a cada 2 pixels.
-        Isso deixa o processamento leve
-        no iPhone.
-    */
-    for (
-        let y = y1;
-        y < y2;
-        y += 2
-    ) {
-
-        for (
-            let x = x1;
-            x < x2;
-            x += 2
-        ) {
-
-            const index =
-                (y * width + x) * 4;
-
-            const r = data[index];
-            const g = data[index + 1];
-            const b = data[index + 2];
-
-            const brightness =
-                0.299 * r +
-                0.587 * g +
-                0.114 * b;
-
-            total += brightness;
-            count++;
+    <h1>WebKit HTML/CSS/Layout Fuzzer</h1>
+    <div id="status">Crashes: <span id="crashCount">0</span></div>
+    <button id="startBtn">Start Fuzzing</button>
+    <button id="stopBtn" disabled>Stop</button>
+    <div id="log"></div>
+    <div id="target" style="position: absolute; top: -9999px; left: -9999px;"></div>
+
+    <script>
+        let fuzzing = false;
+        let crashCount = 0;
+        const logDiv = document.getElementById('log');
+        const targetDiv = document.getElementById('target');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const countSpan = document.getElementById('crashCount');
+
+        // Random string generator
+        function randStr(len) {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>"/';
+            let result = '';
+            for (let i = 0; i < len; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
         }
-    }
 
-    return count
-        ? total / count
-        : 255;
-}
-
-
-/*
-    Lê o frame atual.
-*/
-function readFrame() {
-
-    if (!running) {
-        return;
-    }
-
-    if (video.readyState < 2) {
-
-        requestAnimationFrame(readFrame);
-        return;
-    }
-
-    const width =
-        video.videoWidth;
-
-    const height =
-        video.videoHeight;
-
-    if (!width || !height) {
-
-        requestAnimationFrame(readFrame);
-        return;
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-
-    ctx.drawImage(
-        video,
-        0,
-        0,
-        width,
-        height
-    );
-
-    const imageData =
-        ctx.getImageData(
-            0,
-            0,
-            width,
-            height
-        );
-
-
-    let bits = "";
-
-    /*
-        Lê as 8 linhas.
-    */
-    for (
-        let i = 0;
-        i < BIT_COUNT;
-        i++
-    ) {
-
-        const y =
-            Math.floor(
-                height * LINE_POSITIONS[i]
-            );
-
-        const brightness =
-            getLineBrightness(
-                imageData,
-                y
-            );
-
-
-        /*
-            Converte luminosidade
-            em intensidade de grafite.
-
-            0 = papel muito claro
-            100 = muito escuro
-        */
-        let darkness =
-            100 -
-            (brightness / 255 * 100);
-
-        darkness =
-            Math.max(
-                0,
-                Math.min(
-                    100,
-                    darkness
-                )
-            );
-
-
-        /*
-            Atualiza barra visual.
-        */
-        const bar =
-            document.getElementById(
-                "bar" + i
-            );
-
-        const value =
-            document.getElementById(
-                "value" + i
-            );
-
-        bar.style.width =
-            darkness + "%";
-
-
-        /*
-            Escuro o suficiente = 1.
-        */
-        const bit =
-            brightness < threshold
-                ? 1
-                : 0;
-
-        bits += bit;
-
-        value.textContent =
-            bit;
-    }
-
-
-    displayByte(bits);
-
-    requestAnimationFrame(readFrame);
-}
-
-
-/*
-    Mostra o byte.
-*/
-function displayByte(bits) {
-
-    if (bits.length !== 8) {
-        return;
-    }
-
-    const value =
-        parseInt(bits, 2);
-
-    bitsText.textContent =
-        bits;
-
-    hexText.textContent =
-        "0x" +
-        value
-            .toString(16)
-            .toUpperCase()
-            .padStart(2, "0");
-
-    decimalText.textContent =
-        "Decimal: " + value;
-
-
-    /*
-        ASCII.
-    */
-    if (
-        value >= 32 &&
-        value <= 126
-    ) {
-
-        asciiText.textContent =
-            "ASCII: " +
-            String.fromCharCode(value);
-
-    } else {
-
-        asciiText.textContent =
-            "ASCII: .";
-    }
-}
-
-
-/*
-    CALIBRAÇÃO
-
-    Aponte para uma região
-    de papel SEM GRAFITE.
-
-    O programa mede o papel
-    e coloca o threshold abaixo
-    dele.
-*/
-document
-    .getElementById("calibrate")
-    .addEventListener("click", calibrate);
-
-
-function calibrate() {
-
-    if (!video.videoWidth) {
-
-        statusText.textContent =
-            "Inicie a câmera primeiro.";
-
-        return;
-    }
-
-    const width =
-        video.videoWidth;
-
-    const height =
-        video.videoHeight;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    ctx.drawImage(
-        video,
-        0,
-        0,
-        width,
-        height
-    );
-
-    const imageData =
-        ctx.getImageData(
-            0,
-            0,
-            width,
-            height
-        );
-
-
-    /*
-        Mede as 8 regiões.
-    */
-    let values = [];
-
-    for (
-        let i = 0;
-        i < BIT_COUNT;
-        i++
-    ) {
-
-        const y =
-            Math.floor(
-                height * LINE_POSITIONS[i]
-            );
-
-        const brightness =
-            getLineBrightness(
-                imageData,
-                y
-            );
-
-        values.push(brightness);
-    }
-
-
-    const average =
-        values.reduce(
-            (a, b) => a + b,
-            0
-        ) / values.length;
-
-
-    /*
-        O papel limpo deve ficar
-        acima deste valor.
-
-        Uma marca de grafite forte
-        deverá ficar abaixo.
-    */
-    threshold =
-        average * 0.72;
-
-
-    statusText.textContent =
-        "Calibrado. Papel = " +
-        average.toFixed(0) +
-        " / limite = " +
-        threshold.toFixed(0);
-}
-
-
-/*
-    Botões.
-*/
-document
-    .getElementById("start")
-    .addEventListener(
-        "click",
-        startCamera
-    );
-
-document
-    .getElementById("stop")
-    .addEventListener(
-        "click",
-        stopCamera
-    );
-
-
-/*
-    Para a câmera quando
-    a página é fechada.
-*/
-window.addEventListener(
-    "pagehide",
-    stopCamera
-);
-
-</script>
-
+        // Generate random HTML tags with attributes
+        function generateHTML() {
+            const tags = ['div', 'span', 'p', 'a', 'img', 'script', 'style', 'table', 'tr', 'td', 'ul', 'li', 'input', 'select', 'textarea'];
+            const attrs = ['class', 'id', 'href', 'src', 'onclick', 'onerror', 'style', 'data-', 'aria-', 'hidden', 'disabled', 'checked'];
+            
+            let html = '';
+            const numElements = Math.floor(Math.random() * 20) + 5; // 5-25 elements
+            
+            for (let i = 0; i < numElements; i++) {
+                const tag = tags[Math.floor(Math.random() * tags.length)];
+                const hasAttr = Math.random() > 0.3;
+                
+                html += `<${tag}`;
+                
+                if (hasAttr) {
+                    const attr = attrs[Math.floor(Math.random() * attrs.length)];
+                    const val = randStr(Math.floor(Math.random() * 50));
+                    html += ` ${attr}="${val}"`;
+                    
+                    // Sometimes add nested styles or events
+                    if (Math.random() > 0.8) {
+                        html += ` onclick="alert(1)"`;
+                    }
+                }
+                
+                // Randomly close or leave open
+                if (Math.random() > 0.5) {
+                    html += `>`;
+                    if (Math.random() > 0.7) {
+                        html += randStr(Math.floor(Math.random() * 100));
+                    }
+                    html += `</${tag}>`;
+                } else {
+                    html += ` />`; // Self-close some tags
+                }
+            }
+            
+            // Add some weird nesting
+            if (Math.random() > 0.8) {
+                html = `<div style="display:flex"><div style="width:${randStr(10)}">${html}</div></div>`;
+            }
+            
+            return html;
+        }
+
+        // Fuzz CSS properties too
+        function generateCSSFuzz() {
+            const props = ['margin', 'padding', 'border', 'width', 'height', 'transform', 'opacity', 'z-index', 'position', 'top', 'left', 'right', 'bottom', 'flex', 'grid', 'display'];
+            const values = ['auto', '100%', '0', 'inherit', 'initial', 'unset', 'none', 'solid', 'dashed', 'dotted', 'red', 'blue', '#fff', 'rgb(255,0,0)', 'translateX(10px)', 'rotate(45deg)', 'scale(1.5)'];
+            
+            let css = '';
+            const numProps = Math.floor(Math.random() * 10) + 1;
+            
+            for (let i = 0; i < numProps; i++) {
+                const prop = props[Math.floor(Math.random() * props.length)];
+                const val = values[Math.floor(Math.random() * values.length)];
+                css += `${prop}: ${val}; `;
+            }
+            
+            return css;
+        }
+
+        function log(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function fuzzLoop() {
+            while (fuzzing) {
+                try {
+                    // Clear previous content
+                    targetDiv.innerHTML = '';
+                    
+                    // Generate random HTML
+                    const htmlContent = generateHTML();
+                    
+                    // Inject HTML
+                    targetDiv.innerHTML = htmlContent;
+
+                    // Inject random CSS to stress the renderer
+                    const styleTag = document.createElement('style');
+                    styleTag.textContent = `
+                        .fuzz-test {
+                            ${generateCSSFuzz()}
+                        }
+                    `;
+                    document.head.appendChild(styleTag);
+
+                    // Force reflow/layout calculation
+                    // This is where layout bugs (crashes) usually happen
+                    void targetDiv.offsetWidth; 
+                    void targetDiv.offsetHeight;
+                    
+                    // Trigger paint
+                    requestAnimationFrame(() => {
+                        // Remove the style tag to prevent memory leaks from previous iterations
+                        if (document.contains(styleTag)) {
+                            document.head.removeChild(styleTag);
+                        }
+                    });
+
+                } catch (e) {
+                    crashCount++;
+                    countSpan.textContent = crashCount;
+                    log(`CRASH DETECTED: ${e.message}`);
+                    // Optional: pause or continue after crash
+                    // await new Promise(r => setTimeout(r, 100)); 
+                }
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            fuzzing = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            log("Fuzzing started...");
+            fuzzLoop();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            fuzzing = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            log("Fuzzing stopped.");
+        });
+    </script>
 </body>
 </html>
